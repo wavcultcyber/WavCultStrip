@@ -1,0 +1,9 @@
+build/
+.DS_Store
+*.user
+CMakeUserPresets.json
+.vs/
+.vscode/
+*.vst3
+*.component
+*.app
