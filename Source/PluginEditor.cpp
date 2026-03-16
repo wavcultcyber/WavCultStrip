@@ -136,7 +136,7 @@ void WavCultStripEditor::setupKnob(LabeledKnob& knob, const juce::String& paramI
     knob.label.setText(name, juce::dontSendNotification);
     knob.label.setJustificationType(juce::Justification::centred);
     knob.label.setColour(juce::Label::textColourId, colour.withAlpha(0.8f));
-    knob.label.setFont(juce::Font(10.0f, juce::Font::bold));
+    knob.label.setFont(juce::FontOptions(10.0f, juce::Font::bold));
     addAndMakeVisible(knob.label);
 
     knob.attachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
@@ -150,21 +150,21 @@ void WavCultStripEditor::paint(juce::Graphics& g)
     // Draw logo in top-left corner
     if (logoImage.isValid())
     {
-        float logoSize = 32.0f;
+        int logoSize = 32;
         float logoAspect = (float)logoImage.getWidth() / (float)logoImage.getHeight();
-        float logoW = logoSize * logoAspect;
+        int logoW = (int)(logoSize * logoAspect);
         g.setOpacity(0.9f);
-        g.drawImage(logoImage, 10.0f, 4.0f, logoW, logoSize,
+        g.drawImage(logoImage, 10, 4, logoW, logoSize,
                      0, 0, logoImage.getWidth(), logoImage.getHeight());
         g.setOpacity(1.0f);
     }
 
     // Title
     g.setColour(juce::Colour(0xFFFFFFFF));
-    g.setFont(juce::Font(18.0f, juce::Font::bold));
+    g.setFont(juce::FontOptions(18.0f, juce::Font::bold));
     g.drawText("WAVCULT STRIP", 0, 4, getWidth(), 24, juce::Justification::centred);
 
-    g.setFont(juce::Font(9.0f));
+    g.setFont(juce::FontOptions(9.0f));
     g.setColour(juce::Colour(0xFF666666));
     g.drawText("CHANNEL STRIP", 0, 22, getWidth(), 14, juce::Justification::centred);
 
@@ -181,7 +181,7 @@ void WavCultStripEditor::paint(juce::Graphics& g)
 
         // Title
         g.setColour(accent);
-        g.setFont(juce::Font(11.0f, juce::Font::bold));
+        g.setFont(juce::FontOptions(11.0f, juce::Font::bold));
         g.drawText(title, x, y + 4, w, 16, juce::Justification::centred);
     };
 
