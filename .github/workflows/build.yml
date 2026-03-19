@@ -1,84 +1,97 @@
-name: Build VST3
+name: Build & Package
 
 on:
   push:
     branches: [main]
+    tags: ['v*']
   pull_request:
     branches: [main]
   workflow_dispatch:
 
 jobs:
-  build:
-    strategy:
-      matrix:
-        include:
-          - os: macos-latest
-            name: macOS
-            artifact_path: build/WavCultStrip_artefacts/Release/VST3/WavCult Strip.vst3
-          - os: windows-latest
-            name: Windows
-            artifact_path: build/WavCultStrip_artefacts/Release/VST3/WavCult Strip.vst3
-
-    runs-on: ${{ matrix.os }}
-    name: Build (${{ matrix.name }})
-
+  build-macos:
+    runs-on: macos-latest
+    name: Build (macOS)
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           submodules: recursive
 
-      - name: Configure (macOS)
-        if: runner.os == 'macOS'
+      - name: Configure CMake
         run: cmake -B build -DCMAKE_BUILD_TYPE=Release "-DCMAKE_OSX_ARCHITECTURES=arm64;x86_64"
 
-      - name: Configure (Windows)
-        if: runner.os == 'Windows'
-        run: cmake -B build
-
       - name: Build
-        run: cmake --build build --config Release
+        run: cmake --build build --config Release --parallel
 
       - name: Upload VST3
         uses: actions/upload-artifact@v4
         with:
-          name: WavCultStrip-${{ matrix.name }}
-          path: ${{ matrix.artifact_path }}
+          name: WavCultStrip-macOS-VST3
+          path: build/WavCultStrip_artefacts/Release/VST3/WavCult Strip.vst3
+
+      - name: Build .pkg Installer
+        run: |
+          chmod +x installer/mac/build_pkg.sh
+          ./installer/mac/build_pkg.sh
+
+      - name: Upload macOS Installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: WavCultStrip-macOS-Installer
+          path: installer/output/*.pkg
+
+  build-windows:
+    runs-on: windows-latest
+    name: Build (Windows)
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Configure CMake
+        run: cmake -B build -G "Visual Studio 17 2022" -A x64
+
+      - name: Build
+        run: cmake --build build --config Release --parallel
+
+      - name: Upload VST3
+        uses: actions/upload-artifact@v4
+        with:
+          name: WavCultStrip-Windows-VST3
+          path: build/WavCultStrip_artefacts/Release/VST3/WavCult Strip.vst3
+
+      - name: Build .exe Installer
+        run: |
+          choco install innosetup -y
+          iscc installer/win/installer.iss
+
+      - name: Upload Windows Installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: WavCultStrip-Windows-Installer
+          path: installer/output/*.exe
 
   release:
-    needs: build
+    needs: [build-macos, build-windows]
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    if: startsWith(github.ref, 'refs/tags/v')
     permissions:
       contents: write
-
     steps:
-      - name: Download macOS artifact
+      - name: Download macOS Installer
         uses: actions/download-artifact@v4
         with:
-          name: WavCultStrip-macOS
-          path: artifacts/macOS
+          name: WavCultStrip-macOS-Installer
+          path: release/
 
-      - name: Download Windows artifact
+      - name: Download Windows Installer
         uses: actions/download-artifact@v4
         with:
-          name: WavCultStrip-Windows
-          path: artifacts/Windows
+          name: WavCultStrip-Windows-Installer
+          path: release/
 
-      - name: Zip artifacts
-        run: |
-          cd artifacts/macOS && zip -r ../../WavCultStrip-macOS.zip . && cd ../..
-          cd artifacts/Windows && zip -r ../../WavCultStrip-Windows.zip . && cd ../..
-
-      - name: Create or update release
+      - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: latest
-          name: Latest Build
-          files: |
-            WavCultStrip-macOS.zip
-            WavCultStrip-Windows.zip
-          prerelease: true
-          make_latest: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          files: release/*
+          generate_release_notes: true
